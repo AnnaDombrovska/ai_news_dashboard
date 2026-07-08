@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI News Customizer Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --primary: #4a90e2;
+            --text-dark: #333;
+            --text-light: #666;
+            --warning: #fff3cd;
+            --warning-text: #856404;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { text-align: center; color: var(--primary); margin-bottom: 30px; }
+        .dashboard {
+            display: flex;
+            gap: 25px;
+        }
+        .sidebar {
+            flex: 1;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            height: fit-content;
+        }
+        .sidebar h3 { margin-top: 0; color: #222; }
+        
+        .news-item {
+            padding: 18px;
+            border: 2px solid transparent;
+            border-bottom: 1px solid #eee;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .news-item:last-child { border-bottom: none; }
+        .news-item:hover { background-color: #f8fbff; }
+        .news-item.active {
+            border-color: var(--primary);
+            background-color: #f0f7ff;
+            box-shadow: 0 2px 5px rgba(74,144,226,0.15);
+        }
+        .news-item h4 { margin: 0 0 8px 0; font-size: 15px; color: #111; line-height: 1.3; }
+        .news-item p { margin: 0; font-size: 13px; color: var(--text-light); line-height: 1.4; }
+        
+        .main-content {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .current-news-header {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
+        }
+        .current-news-header h2 { margin: 0 0 10px 0; font-size: 20px; color: #222; }
+        .current-news-header p { margin: 0; font-size: 15px; color: #444; line-height: 1.5; }
+
+        .demo-badge {
+            display: none;
+            background-color: var(--warning);
+            color: var(--warning-text);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border: 1px solid #ffeeba;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-top: 4px solid var(--primary);
+            transition: transform 0.2s ease;
+        }
+        .card:hover { transform: translateY(-3px); }
+        .card h3 { margin-top: 0; color: var(--primary); border-bottom: 1px solid #eee; padding-bottom: 12px; font-size: 17px; }
+        .card p { font-size: 14px; margin-bottom: 12px; line-height: 1.5; }
+        .card strong { color: #222; }
+        
+        .warning-label {
+            background-color: var(--warning);
+            color: var(--warning-text);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        .loader-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 50px 20px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loader-text { font-size: 16px; font-weight: bold; color: var(--primary); }
+        .retry-text { font-size: 13px; color: #999; margin-top: 8px; display: block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>AI News Customizer Dashboard</h1>
+    
+    <div class="dashboard">
+        <div class="sidebar">
+            <h3>Стрічка новин</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Клікніть на новину, щоб автоматично згенерувати аналітику.</p>
+            <div id="newsContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="currentNewsHeader" class="current-news-header" style="display: none;">
+                <h2 id="currentNewsTitle"></h2>
+                <p id="currentNewsText"></p>
+            </div>
+
+            <div id="demoBadge" class="demo-badge">
+                ⚠️ API тимчасово недоступне через ліміти. Увімкнено Demo-режим: показано локальні дані (Fallback).
+            </div>
+
+            <div id="loader" class="loader-container">
+                <div class="spinner"></div>
+                <div class="loader-text">AI аналізує вплив новини на бізнес...<br><span style="font-size: 13px; color: #666; font-weight: normal; margin-top: 5px; display: block;">Зазвичай це займає 5-10 секунд</span>
+                <span id="retryStatus" class="retry-text"></span></div>
+            </div>
+
+            <div id="resultsContainer" class="results-grid"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_KEY = "AQ.Ab8RN6K_p46rPpPbyAS3-sSJgKct8sUqJ2XjVuUMsjClbGG5hA"; 
+    
+    // ВСТАНОВЛЕНА ПРАВИЛЬНА І РОБОЧА МОДЕЛЬ: gemini-2.5-flash
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+
+    const MOCK_NEWS = [
+        {
+            id: 1,
+            title: "Реліз Claude 5 Fable від Anthropic",
+            text: "Anthropic випустила Claude 5 Fable. Ця модель спеціалізується на глибокому сторітелінгу, емпатичній комунікації та створенні складних наративів, маючи при цьому майже нульовий рівень галюцинацій. Вона здатна генерувати тексти, які неможливо відрізнити від написаних талановитою людиною."
+        },
+        {
+            id: 2,
+            title: "Вихід нової моделі Claude Sonnet 5",
+            text: "Компанія Anthropic презентувала Claude Sonnet 5 — нове покоління своєї найшвидшої моделі. Вона оптимізована для високошвидкісного програмування, аналізу великих масивів даних та миттєвих відповідей у корпоративних системах з мінімальними витратами обчислювальних ресурсів."
+        },
+        {
+            id: 3,
+            title: "OpenAI випускає GPT-5.6 із флагманською Sol",
+            text: "OpenAI офіційно представила GPT-5.6, що включає новий флагманський модуль Sol. Ця архітектура дозволяє штучному інтелекту самостійно планувати довгострокові стратегії, вирішувати надскладні математичні завдання та автономно керувати бізнес-процесами без необхідності втручання людини."
+        }
+    ];
+
+    const MOCK_API_RESPONSES = {
+        1: {
+            "Bank": { "meaning": "Можливість створювати емпатичні фінансові звіти та персоналізовані листи для VIP-клієнтів.", "tasks": "Впровадження моделі в службу підтримки для складних конфліктних ситуацій.", "audience": "Клієнти відчуватимуть більш людяний підхід замість сухих банківських відповідей.", "risks": "Ризик зайвої емоційності в офіційній комунікації.", "tone": "Емпатичний, але професійний." },
+            "FMCG": { "meaning": "Автоматизація сторітелінгу для маркетингових кампаній брендів.", "tasks": "Генерація креативних сценаріїв для рекламних роликів та SMM.", "audience": "Споживачі отримають більш захопливий та емоційний контент.", "risks": "Втрата унікального 'голосу' бренду без нагляду редактора.", "tone": "Креативний, надихаючий." },
+            "Charity": { "meaning": "Ідеальний інструмент для написання зворушливих історій про підопічних фонду.", "tasks": "Створення фандрейзингових кампаній та листів вдячності донорам.", "audience": "Донори відчують глибший емоційний зв'язок із місією фонду.", "risks": "⚠️ Недостатньо даних у новині щодо використання ШІ в етичних цілях.", "tone": "Щирий, зворушливий, прозорий." },
+            "Education": { "meaning": "Створення інтерактивних підручників з глибокими наративами.", "tasks": "Розробка персоналізованих історій для навчання молодших школярів.", "audience": "Учні будуть більше залучені до процесу через цікавий сторітелінг.", "risks": "Надмірна залежність від ШІ замість реального вчителя.", "tone": "Пізнавальний, дружній." },
+            "Government": { "meaning": "Покращення комунікації складних реформ простою, людяною мовою.", "tasks": "Адаптація законопроєктів у зрозумілі історії для населення.", "audience": "Громадяни краще розумітимуть державні ініціативи.", "risks": "Небезпека маніпулювання громадською думкою.", "tone": "Офіційний, але доступний та відкритий." },
+            "Corporate": { "meaning": "Трансформація внутрішньої комунікації та корпоративної культури.", "tasks": "Написання надихаючих листів від CEO та матеріалів для онбордингу.", "audience": "Співробітники краще сприйматимуть корпоративні цінності.", "risks": "Відчуження, якщо співробітники зрозуміють, що емпатія згенерована ШІ.", "tone": "Лідерський, підтримуючий." }
+        },
+        2: {
+            "Bank": { "meaning": "Пришвидшення аналізу фінансових транзакцій та написання коду для банківських додатків.", "tasks": "Оновлення застарілих IT-систем та швидкий аналіз ризиків.", "audience": "Користувачі банківських додатків отримають швидші оновлення та менше багів.", "risks": "Потенційні вразливості в швидко згенерованому коді.", "tone": "Технічний, експертний." },
+            "FMCG": { "meaning": "Миттєвий аналіз великих масивів даних щодо продажів та логістики.", "tasks": "Оптимізація ланцюгів постачання через швидку обробку даних.", "audience": "Покупці матимуть постійну наявність товарів завдяки кращій логістиці.", "risks": "⚠️ Недостатньо даних у новині щодо точності прогнозів продажів.", "tone": "Аналітичний, прагматичний." },
+            "Charity": { "meaning": "Здешевлення обробки баз даних донорів.", "tasks": "Швидкий аналіз ефективності попередніх зборів коштів.", "audience": "Фонди зможуть виділяти більше грошей на допомогу, економлячи на адмініструванні.", "risks": "Технічні збої при роботі з конфіденційними даними донорів.", "tone": "Чіткий, оптимістичний." },
+            "Education": { "meaning": "Потужний інструмент для студентів технічних спеціальностей та програмістів.", "tasks": "Інтеграція в платформи для навчання програмуванню як авто-репетитор.", "audience": "Студенти швидше знаходитимуть помилки у своєму коді.", "risks": "Зниження навичок самостійного пошуку помилок у студентів.", "tone": "Інструктивний, заохочувальний." },
+            "Government": { "meaning": "Економія бюджетних коштів на обробку державних реєстрів.", "tasks": "Модернізація державних цифрових сервісів та баз даних.", "audience": "Громадяни швидше отримуватимуть цифрові послуги та довідки.", "risks": "Витік даних у разі неправильного налаштування корпоративної системи.", "tone": "Звітуючий, серйозний." },
+            "Corporate": { "meaning": "Підвищення продуктивності IT-відділів та аналітиків.", "tasks": "Впровадження моделі у внутрішні корпоративні месенджери та ERP-системи.", "audience": "Співробітники витрачатимуть менше часу на рутинну роботу з даними.", "risks": "Ризик скорочення робочих місць молодших аналітиків.", "tone": "Інноваційний, діловий." }
+        },
+        3: {
+            "Bank": { "meaning": "Можливість повної автоматизації інвестиційних портфелів.", "tasks": "Делегування ШІ складних математичних розрахунків для трейдингу.", "audience": "Інвестори отримають алгоритми, що здатні самостійно адаптуватися до ринку.", "risks": "Катастрофічні фінансові втрати у разі логічної помилки в стратегії ШІ.", "tone": "Обережний, високопрофесійний." },
+            "FMCG": { "meaning": "Автономне управління закупівлями та стратегією виходу на нові ринки.", "tasks": "Створення довгострокових бізнес-планів без залучення топ-менеджменту.", "audience": "Ринок отримає компанії, які надшвидко адаптуються до змін попиту.", "risks": "Прийняття ШІ неетичних рішень заради максимізації прибутку.", "tone": "Візіонерський, стратегічний." },
+            "Charity": { "meaning": "Автоматичне планування розподілу гуманітарної допомоги в кризових ситуаціях.", "tasks": "Вирішення складних логістичних завдань у зонах лиха.", "audience": "Допомога надходитиме швидше завдяки ідеальному математичному плануванню.", "risks": "⚠️ Недостатньо даних у новині щодо роботи моделі в умовах невизначеності.", "tone": "Серйозний, орієнтований на результат." },
+            "Education": { "meaning": "ШІ здатний вирішувати надскладні академічні та дослідницькі задачі.", "tasks": "Використання в університетах для допомоги в наукових відкриттях.", "audience": "Науковці отримають 'цифрового співавтора' для досліджень.", "risks": "Загроза академічній доброчесності та знецінення дипломів.", "tone": "Науковий, авторитетний." },
+            "Government": { "meaning": "Автономне управління інфраструктурою (трафік, енергомережі).", "tasks": "Розробка макроекономічних стратегій розвитку країни.", "audience": "Суспільство житиме в більш оптимізованих та розумних містах.", "risks": "Втрата людського контролю над критично важливими процесами життєзабезпечення.", "tone": "Державницький, заспокійливий." },
+            "Corporate": { "meaning": "Радикальна зміна ролі топ-менеджменту.", "tasks": "Делегування управління рутинними бізнес-процесами модулю Sol.", "audience": "Співробітники можуть підпорядковуватися рішенням автономного ШІ, а не керівника.", "risks": "Криза довіри в колективі через відсутність людського лідерства.", "tone": "Трансформаційний, об'єктивний." }
+        }
+    };
+
+    let selectedNews = null;
+
+    function renderNews() {
+        const container = document.getElementById('newsContainer');
+        MOCK_NEWS.forEach((news, index) => {
+            const div = document.createElement('div');
+            div.className = 'news-item';
+            div.innerHTML = `<h4>${news.title}</h4><p>${news.text.substring(0, 75)}...</p>`;
+            
+            div.onclick = () => selectNews(news, div);
+            container.appendChild(div);
+
+            if (index === 0) {
+                setTimeout(() => selectNews(news, div), 100);
+            }
+        });
+    }
+
+    function selectNews(news, element) {
+        if (selectedNews && selectedNews.id === news.id) return;
+        selectedNews = news;
+        
+        document.querySelectorAll('.news-item').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+        
+        document.getElementById('currentNewsHeader').style.display = 'block';
+        document.getElementById('currentNewsTitle').innerText = news.title;
+        document.getElementById('currentNewsText').innerText = news.text;
+        
+        document.getElementById('demoBadge').style.display = 'none';
+
+        analyzeNews(); 
+    }
+
+    const getPrompt = (newsText) => `
+You are an expert AI business analyst. Your task is to analyze the following AI news and adapt its meaning for 6 specific sectors: Bank, FMCG, Charity, Education, Government, Corporate.
+
+NEWS TEXT: "${newsText}"
+
+CRITICAL RULE: Do NOT invent facts. Rely ONLY on the provided news text. If the text lacks sufficient information to assess a specific point for a sector, you MUST explicitly write: "⚠️ Недостатньо даних у новині".
+
+For each sector, provide:
+1. meaning: What it means for the sector.
+2. tasks: Primary tasks or opportunities.
+3. audience: Impact on their audience.
+4. risks: Specific risks.
+5. tone: Recommended tone of communication.
+
+Respond STRICTLY in valid JSON format exactly like this structure:
+{
+  "Bank": { "meaning": "...", "tasks": "...", "audience": "...", "risks": "...", "tone": "..." },
+  "FMCG": { "meaning": "...", "tasks": "...", "audience": "...", "risks": "...", "tone": "..." },
+  "Charity": { "meaning": "...", "tasks": "...", "audience": "...", "risks": "...", "tone": "..." },
+  "Education": { "meaning": "...", "tasks": "...", "audience": "...", "risks": "...", "tone": "..." },
+  "Government": { "meaning": "...", "tasks": "...", "audience": "...", "risks": "...", "tone": "..." },
+  "Corporate": { "meaning": "...", "tasks": "...", "audience": "...", "risks": "...", "tone": "..." }
+}
+Output language: Ukrainian.
+`;
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function callGeminiAPI(newsText) {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: getPrompt(newsText) }] }],
+                generationConfig: {
+                    responseMimeType: "application/json" 
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.json().catch(() => null);
+            const message = errorBody?.error?.message || `HTTP ${response.status}`;
+            const error = new Error(message);
+            error.status = response.status;
+            throw error;
+        }
+
+        const data = await response.json();
+        if (data.error) {
+            const error = new Error(data.error.message);
+            error.status = data.error.code;
+            throw error;
+        }
+
+        const responseText = data.candidates[0].content.parts[0].text;
+        return JSON.parse(responseText);
+    }
+
+    async function callGeminiWithRetry(newsText, maxRetries = 3) {
+        const retryStatusEl = document.getElementById('retryStatus');
+        let delay = 1500;
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                if (retryStatusEl) retryStatusEl.innerText = '';
+                return await callGeminiAPI(newsText);
+            } catch (error) {
+                const isOverloaded = error.status === 503;
+                const isLastAttempt = attempt === maxRetries;
+
+                if (!isOverloaded || isLastAttempt) {
+                    throw error; 
+                }
+
+                if (retryStatusEl) {
+                    retryStatusEl.innerText = `Модель перевантажена, повторна спроба ${attempt + 1}/${maxRetries}...`;
+                }
+                await sleep(delay);
+                delay *= 2; 
+            }
+        }
+    }
+
+    async function analyzeNews() {
+        document.getElementById('loader').style.display = 'flex';
+        document.getElementById('resultsContainer').innerHTML = '';
+
+        try {
+            const parsedData = await callGeminiWithRetry(selectedNews.text);
+            renderResults(parsedData);
+            
+        } catch (error) {
+            console.warn("API Error caught, switching to DEMO MODE:", error.message);
+            
+            document.getElementById('demoBadge').style.display = 'block';
+            
+            const fallbackData = MOCK_API_RESPONSES[selectedNews.id];
+            
+            await sleep(800); 
+            renderResults(fallbackData);
+            
+        } finally {
+            document.getElementById('loader').style.display = 'none';
+        }
+    }
+
+    const sectorNames = {
+        "Bank": "🏦 Банківський сектор",
+        "FMCG": "🛒 FMCG компанії",
+        "Charity": "❤️ Благодійні фонди",
+        "Education": "🎓 Освітні проєкти",
+        "Government": "🏛 Державні інституції",
+        "Corporate": "🏢 Корпоративні комунікації"
+    };
+
+    function renderResults(data) {
+        const container = document.getElementById('resultsContainer');
+        container.innerHTML = '';
+
+        for (const [sector, info] of Object.entries(data)) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            let cardContent = `<h3>${sectorNames[sector]}</h3>`;
+            
+            const fields = [
+                { key: 'meaning', label: 'Специфіка' },
+                { key: 'tasks', label: 'Задачі' },
+                { key: 'audience', label: 'Аудиторія' },
+                { key: 'risks', label: 'Ризики' },
+                { key: 'tone', label: 'Тон комунікації' }
+            ];
+
+            fields.forEach(field => {
+                const text = info[field.key];
+                if (text.includes('⚠️')) {
+                    cardContent += `<p><strong>${field.label}:</strong> <span class="warning-label">${text}</span></p>`;
+                } else {
+                    cardContent += `<p><strong>${field.label}:</strong> ${text}</p>`;
+                }
+            });
+
+            card.innerHTML = cardContent;
+            container.appendChild(card);
+        }
+    }
+
+    renderNews();
+</script>
+
+</body>
+</html>
